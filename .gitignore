@@ -63,3 +63,11 @@ firebase-debug.log
 *.jks
 *.keystore
 service-account*.json
+# Firebase local configuration
+lib/firebase_options.dart
+android/app/google-services.json
+firebase-debug.log
+.env
+*.jks
+*.keystore
+service-account*.json
