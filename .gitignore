@@ -50,3 +50,16 @@ firebase-debug.log
 *.keystore
 service-account*.json
 .env
+
+# Firebase local config
+lib/firebase_options.dart
+android/app/google-services.json
+
+# Firebase debug
+firebase-debug.log
+
+# Secrets
+.env
+*.jks
+*.keystore
+service-account*.json
