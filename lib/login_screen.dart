@@ -1,40 +1,70 @@
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
-import 'theme.dart';
+import 'home_shell.dart';
 import 'widgets.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+  });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<LoginScreen> createState() {
+    return _LoginScreenState();
+  }
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final userController = TextEditingController(text: 'admin');
-  final passwordController = TextEditingController(text: '1234');
-  bool obscurePassword = true;
-  bool loading = false;
+class _LoginScreenState
+    extends State<LoginScreen> {
+  final userController =
+      TextEditingController(
+    text: 'admin',
+  );
 
-  void _login() {
-    setState(() => loading = true);
-    final error = AppState.instance.login(
+  final passwordController =
+      TextEditingController(
+    text: '1234',
+  );
+
+  bool hidePassword = true;
+
+  void login() {
+    final user =
+        AppState.instance.login(
       userController.text,
       passwordController.text,
     );
-    if (!mounted) return;
-    setState(() => loading = false);
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
+
+    if (user == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Usuario o contraseña incorrectos.',
+          ),
+        ),
       );
+
+      return;
     }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            const HomeShell(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final desktop = MediaQuery.of(context).size.width >= 900;
+    final desktop =
+        MediaQuery.of(context)
+                .size
+                .width >=
+            900;
 
     return Scaffold(
       body: Row(
@@ -42,45 +72,52 @@ class _LoginScreenState extends State<LoginScreen> {
           if (desktop)
             Expanded(
               child: Container(
-                color: kNavy,
-                padding: const EdgeInsets.all(64),
+                color:
+                    const Color(
+                  0xFF142A3A,
+                ),
+                padding:
+                    const EdgeInsets
+                        .all(60),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment
+                          .center,
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
                   children: [
-                    const BrandLogo(size: 82),
-                    const SizedBox(height: 34),
+                    const BrandLogo(
+                      size: 82,
+                    ),
+                    const SizedBox(
+                      height: 30,
+                    ),
                     const Text(
-                      'Control de producción\npara 2RM',
-                      style: TextStyle(
-                        color: Colors.white,
+                      'ERP de Producción\n2RM',
+                      style:
+                          TextStyle(
+                        color:
+                            Colors.white,
                         fontSize: 42,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
+                        fontWeight:
+                            FontWeight
+                                .w900,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(
+                      height: 18,
+                    ),
                     Text(
-                      'Seguimiento local de órdenes de trabajo, pedidos, '
-                      'archivos DXF, recepción y producción.',
+                      'Seguimiento de órdenes, '
+                      'tareas, materiales y producción.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: .72),
+                        color: Colors
+                            .white
+                            .withOpacity(
+                                .7),
                         fontSize: 17,
-                        height: 1.5,
                       ),
-                    ),
-                    const SizedBox(height: 42),
-                    const _Feature(
-                      icon: Icons.timeline,
-                      text: 'Porcentaje automático por OT',
-                    ),
-                    const _Feature(
-                      icon: Icons.groups_2_outlined,
-                      text: 'Acceso independiente por rol',
-                    ),
-                    const _Feature(
-                      icon: Icons.save_outlined,
-                      text: 'Datos persistentes en este equipo',
                     ),
                   ],
                 ),
@@ -88,103 +125,123 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           Expanded(
             child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(30),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 440),
+              child:
+                  SingleChildScrollView(
+                padding:
+                    const EdgeInsets
+                        .all(30),
+                child:
+                    ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(
+                    maxWidth: 440,
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
                     children: [
                       if (!desktop) ...[
-                        const BrandLogo(size: 66),
-                        const SizedBox(height: 26),
+                        const BrandLogo(
+                          size: 68,
+                        ),
+                        const SizedBox(
+                          height: 25,
+                        ),
                       ],
                       const Text(
                         'Bienvenido',
-                        style: TextStyle(
+                        style:
+                            TextStyle(
                           fontSize: 34,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF172B3A),
+                          fontWeight:
+                              FontWeight
+                                  .w900,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Ingrese sus credenciales de 2RM ERP.',
-                        style: TextStyle(color: Colors.grey),
+                      const SizedBox(
+                        height: 25,
                       ),
-                      const SizedBox(height: 34),
                       TextField(
-                        controller: userController,
-                        decoration: const InputDecoration(
-                          labelText: 'Usuario',
-                          prefixIcon: Icon(Icons.person_outline),
+                        controller:
+                            userController,
+                        decoration:
+                            const InputDecoration(
+                          labelText:
+                              'Usuario',
+                          prefixIcon:
+                              Icon(
+                            Icons
+                                .person_outline,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(
+                        height: 15,
+                      ),
                       TextField(
-                        controller: passwordController,
-                        obscureText: obscurePassword,
-                        onSubmitted: (_) => _login(),
-                        decoration: InputDecoration(
-                          labelText: 'Contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
+                        controller:
+                            passwordController,
+                        obscureText:
+                            hidePassword,
+                        onSubmitted: (_) =>
+                            login(),
+                        decoration:
+                            InputDecoration(
+                          labelText:
+                              'Contraseña',
+                          prefixIcon:
+                              const Icon(
+                            Icons
+                                .lock_outline,
+                          ),
+                          suffixIcon:
+                              IconButton(
                             onPressed: () {
-                              setState(() {
-                                obscurePassword = !obscurePassword;
-                              });
+                              setState(
+                                () {
+                                  hidePassword =
+                                      !hidePassword;
+                                },
+                              );
                             },
                             icon: Icon(
-                              obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
+                              hidePassword
+                                  ? Icons
+                                      .visibility_outlined
+                                  : Icons
+                                      .visibility_off_outlined,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(
+                        height: 25,
+                      ),
                       SizedBox(
-                        width: double.infinity,
+                        width:
+                            double.infinity,
                         height: 52,
-                        child: FilledButton(
-                          onPressed: loading ? null : _login,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: kPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        child:
+                            FilledButton(
+                          onPressed:
+                              login,
+                          child:
+                              const Text(
+                            'Iniciar sesión',
                           ),
-                          child: loading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'Iniciar sesión',
-                                  style: TextStyle(fontSize: 16),
-                                ),
                         ),
                       ),
-                      const SizedBox(height: 25),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0F4F8),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'Demo inicial: admin / 1234\n'
-                          'Los usuarios adicionales se administran dentro del sistema.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 12,
-                            height: 1.5,
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      const Center(
+                        child: Text(
+                          'admin / 1234',
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.grey,
                           ),
                         ),
                       ),
@@ -194,27 +251,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Feature extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _Feature({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Row(
-        children: [
-          Icon(icon, color: kOrange),
-          const SizedBox(width: 13),
-          Text(text, style: const TextStyle(color: Colors.white70)),
         ],
       ),
     );

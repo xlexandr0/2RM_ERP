@@ -1,48 +1,54 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
-import 'home_shell.dart';
+import 'firebase_options.dart';
 import 'login_screen.dart';
+import 'services/notification_service.dart';
 import 'theme.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(
+  RemoteMessage message,
+) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppState.instance.initialize();
-  runApp(const Erp2RMApp());
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(
+    firebaseMessagingBackgroundHandler,
+  );
+
+  await NotificationService.initialize();
+
+  await AppState.instance.init();
+
+  runApp(
+    const Erp2RMApp(),
+  );
 }
 
 class Erp2RMApp extends StatelessWidget {
-  const Erp2RMApp({super.key});
+  const Erp2RMApp({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: '2RM ERP',
-      theme: buildTheme(),
-      home: const AppRoot(),
-    );
-  }
-}
-
-class AppRoot extends StatelessWidget {
-  const AppRoot({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppState.instance;
-    return AnimatedBuilder(
-      animation: state,
-      builder: (context, _) {
-        if (!state.initialized) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        return state.currentUser == null
-            ? const LoginScreen()
-            : const HomeShell();
-      },
+      theme: buildAppTheme(),
+      home: const LoginScreen(),
     );
   }
 }

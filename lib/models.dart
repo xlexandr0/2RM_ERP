@@ -1,239 +1,393 @@
 enum UserRole {
   admin,
-  gerencia,
+  almacen,
+  logistica,
+  contabilidad,
+  jefatura,
+  supervisor,
   cotizaciones,
-  dibujante,
-  chofer,
-  supervisorSoldadura,
-  supervisorMaestranza,
 }
 
-extension UserRoleX on UserRole {
+extension UserRoleExtension on UserRole {
   String get label {
     switch (this) {
       case UserRole.admin:
         return 'Administrador';
-      case UserRole.gerencia:
-        return 'Gerencia';
+      case UserRole.almacen:
+        return 'Almacén';
+      case UserRole.logistica:
+        return 'Logística';
+      case UserRole.contabilidad:
+        return 'Contabilidad';
+      case UserRole.jefatura:
+        return 'Jefatura';
+      case UserRole.supervisor:
+        return 'Supervisor';
       case UserRole.cotizaciones:
         return 'Cotizaciones';
-      case UserRole.dibujante:
-        return 'Dibujante';
-      case UserRole.chofer:
-        return 'Chofer';
-      case UserRole.supervisorSoldadura:
-        return 'Supervisor Soldadura';
-      case UserRole.supervisorMaestranza:
-        return 'Supervisor Maestranza';
     }
   }
+}
 
-  String get shortLabel {
+enum TaskStatus {
+  pending,
+  inProgress,
+  completed,
+  blocked,
+}
+
+extension TaskStatusExtension on TaskStatus {
+  String get label {
     switch (this) {
-      case UserRole.admin:
-        return 'Admin';
-      case UserRole.gerencia:
-        return 'Gerencia';
-      case UserRole.cotizaciones:
-        return 'Cotizaciones';
-      case UserRole.dibujante:
-        return 'Dibujante';
-      case UserRole.chofer:
-        return 'Chofer';
-      case UserRole.supervisorSoldadura:
-        return 'Soldadura';
-      case UserRole.supervisorMaestranza:
-        return 'Maestranza';
+      case TaskStatus.pending:
+        return 'Pendiente';
+      case TaskStatus.inProgress:
+        return 'En proceso';
+      case TaskStatus.completed:
+        return 'Completada';
+      case TaskStatus.blocked:
+        return 'Bloqueada';
     }
   }
 }
 
 class AppUser {
-  final String id;
+  final int id;
+
+  String name;
   String username;
   String password;
-  String fullName;
+
   UserRole role;
+
   bool active;
 
   AppUser({
     required this.id,
+    required this.name,
     required this.username,
     required this.password,
-    required this.fullName,
     required this.role,
     this.active = true,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'username': username,
-        'password': password,
-        'fullName': fullName,
-        'role': role.name,
-        'active': active,
-      };
+  bool get canChangeDeliveryDate {
+    return username == 'jefatura1' ||
+        username == 'jefatura2';
+  }
 
-  factory AppUser.fromJson(Map<String, dynamic> json) {
-    final roleName = json['role'] as String? ?? UserRole.gerencia.name;
+  bool get canCloseOrder {
+    return username == 'jefatura1' ||
+        username == 'jefatura2';
+  }
+
+  bool get canChangeProduction {
+    return role == UserRole.supervisor;
+  }
+
+  bool get canChangeMaterial {
+    return role == UserRole.almacen;
+  }
+
+  bool get canCreateOrder {
+    return role == UserRole.admin ||
+        role == UserRole.jefatura;
+  }
+
+  bool get canManageTasks {
+    return role == UserRole.admin ||
+        role == UserRole.jefatura;
+  }
+
+  bool get canManageUsers {
+    return role == UserRole.admin;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'username': username,
+      'password': password,
+      'role': role.name,
+      'active': active,
+    };
+  }
+
+  factory AppUser.fromJson(
+    Map<String, dynamic> json,
+  ) {
     return AppUser(
-      id: json['id'] as String,
-      username: json['username'] as String,
-      password: json['password'] as String,
-      fullName: json['fullName'] as String,
+      id: json['id'],
+      name: json['name'],
+      username: json['username'],
+      password: json['password'],
       role: UserRole.values.firstWhere(
-        (item) => item.name == roleName,
-        orElse: () => UserRole.gerencia,
+        (role) => role.name == json['role'],
+        orElse: () => UserRole.cotizaciones,
       ),
-      active: json['active'] as bool? ?? true,
+      active: json['active'] ?? true,
     );
   }
 }
 
-class ActivityLog {
+class HistoryEntry {
   final String title;
   final String detail;
-  final String actor;
-  final DateTime timestamp;
+  final DateTime date;
+  final String byUser;
 
-  ActivityLog({
+  HistoryEntry({
     required this.title,
     required this.detail,
-    required this.actor,
-    required this.timestamp,
+    required this.date,
+    required this.byUser,
   });
 
-  Map<String, dynamic> toJson() => {
-        'title': title,
-        'detail': detail,
-        'actor': actor,
-        'timestamp': timestamp.toIso8601String(),
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'detail': detail,
+      'date': date.toIso8601String(),
+      'byUser': byUser,
+    };
+  }
 
-  factory ActivityLog.fromJson(Map<String, dynamic> json) => ActivityLog(
-        title: json['title'] as String,
-        detail: json['detail'] as String,
-        actor: json['actor'] as String? ?? 'Sistema',
-        timestamp: DateTime.parse(json['timestamp'] as String),
-      );
+  factory HistoryEntry.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return HistoryEntry(
+      title: json['title'],
+      detail: json['detail'],
+      date: DateTime.parse(json['date']),
+      byUser: json['byUser'] ?? '-',
+    );
+  }
+}
+
+class WorkTask {
+  final int id;
+
+  String title;
+  String description;
+
+  String assignedUsername;
+
+  int progress;
+
+  TaskStatus status;
+
+  WorkTask({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.assignedUsername,
+    this.progress = 0,
+    this.status = TaskStatus.pending,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'assignedUsername': assignedUsername,
+      'progress': progress,
+      'status': status.name,
+    };
+  }
+
+  factory WorkTask.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return WorkTask(
+      id: json['id'],
+      title: json['title'],
+      description: json['description'] ?? '',
+      assignedUsername: json['assignedUsername'],
+      progress: json['progress'] ?? 0,
+      status: TaskStatus.values.firstWhere(
+        (status) => status.name == json['status'],
+        orElse: () => TaskStatus.pending,
+      ),
+    );
+  }
 }
 
 class WorkOrder {
-  final String id;
+  final int id;
+
   String code;
   String client;
   String description;
-  DateTime startDate;
-  DateTime dueDate;
 
-  bool approved;
-  bool orderPlaced;
-  bool dxfUploaded;
-  bool received;
-  int weldingProgress;
-  int machiningProgress;
-  bool finished;
+  final DateTime originalDueDate;
 
-  String? orderPdfName;
-  String? orderPdfPath;
-  String? dxfFileName;
-  String? dxfFilePath;
+  DateTime? revisedDueDate;
 
-  final List<ActivityLog> history;
+  int productionProgress;
+  int materialProgress;
+
+  String? pdfName;
+  String? pdfPath;
+
+  String? dxfName;
+  String? dxfPath;
+
+  bool closed;
+
+  final List<WorkTask> tasks;
+
+  final List<HistoryEntry> history;
 
   WorkOrder({
     required this.id,
     required this.code,
     required this.client,
     required this.description,
-    required this.startDate,
-    required this.dueDate,
-    this.approved = true,
-    this.orderPlaced = false,
-    this.dxfUploaded = false,
-    this.received = false,
-    this.weldingProgress = 0,
-    this.machiningProgress = 0,
-    this.finished = false,
-    this.orderPdfName,
-    this.orderPdfPath,
-    this.dxfFileName,
-    this.dxfFilePath,
-    List<ActivityLog>? history,
-  }) : history = history ?? <ActivityLog>[];
+    required this.originalDueDate,
+    this.revisedDueDate,
+    this.productionProgress = 0,
+    this.materialProgress = 0,
+    this.pdfName,
+    this.pdfPath,
+    this.dxfName,
+    this.dxfPath,
+    this.closed = false,
+    List<WorkTask>? tasks,
+    List<HistoryEntry>? history,
+  })  : tasks = tasks ?? [],
+        history = history ?? [];
 
-  int get productionProgress =>
-      ((weldingProgress + machiningProgress) / 2).round();
+  DateTime get activeDueDate {
+    return revisedDueDate ?? originalDueDate;
+  }
 
-  int get progress {
-    if (finished) return 100;
-
-    double total = 0;
-    if (approved) total += 5;
-    if (orderPlaced) total += 10;
-    if (dxfUploaded) total += 10;
-    if (received) total += 10;
-
-    if (received) {
-      total += 60 * (productionProgress / 100);
+  int get tasksProgress {
+    if (tasks.isEmpty) {
+      return 0;
     }
 
-    return total.round().clamp(0, 95).toInt();
+    int total = 0;
+
+    for (final task in tasks) {
+      total += task.progress;
+    }
+
+    return (total / tasks.length).round();
   }
 
-  String get status {
-    if (finished) return 'Finalizada';
-    if (received && productionProgress > 0) return 'En producción';
-    if (received) return 'Lista para producción';
-    if (dxfUploaded) return 'Esperando recepción';
-    if (orderPlaced) return 'Esperando DXF';
-    if (approved) return 'Esperando pedido';
-    return 'Pendiente';
+  /// Cálculo:
+  /// tareas = 40%
+  /// producción = 40%
+  /// material = 20%
+  int get totalProgress {
+    if (closed) {
+      return 100;
+    }
+
+    final result =
+        (tasksProgress * 0.40) +
+        (productionProgress * 0.40) +
+        (materialProgress * 0.20);
+
+    return result.round().clamp(0, 100);
   }
 
-  bool get isLate => !finished && DateTime.now().isAfter(dueDate);
+  bool get isOverdue {
+    if (closed) {
+      return false;
+    }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'code': code,
-        'client': client,
-        'description': description,
-        'startDate': startDate.toIso8601String(),
-        'dueDate': dueDate.toIso8601String(),
-        'approved': approved,
-        'orderPlaced': orderPlaced,
-        'dxfUploaded': dxfUploaded,
-        'received': received,
-        'weldingProgress': weldingProgress,
-        'machiningProgress': machiningProgress,
-        'finished': finished,
-        'orderPdfName': orderPdfName,
-        'orderPdfPath': orderPdfPath,
-        'dxfFileName': dxfFileName,
-        'dxfFilePath': dxfFilePath,
-        'history': history.map((item) => item.toJson()).toList(),
-      };
+    final now = DateTime.now();
 
-  factory WorkOrder.fromJson(Map<String, dynamic> json) => WorkOrder(
-        id: json['id'] as String,
-        code: json['code'] as String,
-        client: json['client'] as String,
-        description: json['description'] as String,
-        startDate: DateTime.parse(json['startDate'] as String),
-        dueDate: DateTime.parse(json['dueDate'] as String),
-        approved: json['approved'] as bool? ?? true,
-        orderPlaced: json['orderPlaced'] as bool? ?? false,
-        dxfUploaded: json['dxfUploaded'] as bool? ?? false,
-        received: json['received'] as bool? ?? false,
-        weldingProgress: (json['weldingProgress'] as num? ?? 0).toInt(),
-        machiningProgress: (json['machiningProgress'] as num? ?? 0).toInt(),
-        finished: json['finished'] as bool? ?? false,
-        orderPdfName: json['orderPdfName'] as String?,
-        orderPdfPath: json['orderPdfPath'] as String?,
-        dxfFileName: json['dxfFileName'] as String?,
-        dxfFilePath: json['dxfFilePath'] as String?,
-        history: (json['history'] as List<dynamic>? ?? <dynamic>[])
-            .map((item) => ActivityLog.fromJson(item as Map<String, dynamic>))
-            .toList(),
-      );
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
+    final due = DateTime(
+      activeDueDate.year,
+      activeDueDate.month,
+      activeDueDate.day,
+    );
+
+    return today.isAfter(due);
+  }
+
+  bool get canClose {
+    return !closed &&
+        tasksProgress == 100 &&
+        productionProgress == 100 &&
+        materialProgress == 100;
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'code': code,
+      'client': client,
+      'description': description,
+      'originalDueDate':
+          originalDueDate.toIso8601String(),
+      'revisedDueDate':
+          revisedDueDate?.toIso8601String(),
+      'productionProgress': productionProgress,
+      'materialProgress': materialProgress,
+      'pdfName': pdfName,
+      'pdfPath': pdfPath,
+      'dxfName': dxfName,
+      'dxfPath': dxfPath,
+      'closed': closed,
+      'tasks':
+          tasks.map((task) => task.toJson()).toList(),
+      'history':
+          history.map((item) => item.toJson()).toList(),
+    };
+  }
+
+  factory WorkOrder.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return WorkOrder(
+      id: json['id'],
+      code: json['code'],
+      client: json['client'],
+      description: json['description'],
+      originalDueDate:
+          DateTime.parse(json['originalDueDate']),
+      revisedDueDate:
+          json['revisedDueDate'] == null
+              ? null
+              : DateTime.parse(
+                  json['revisedDueDate'],
+                ),
+      productionProgress:
+          json['productionProgress'] ?? 0,
+      materialProgress:
+          json['materialProgress'] ?? 0,
+      pdfName: json['pdfName'],
+      pdfPath: json['pdfPath'],
+      dxfName: json['dxfName'],
+      dxfPath: json['dxfPath'],
+      closed: json['closed'] ?? false,
+      tasks: ((json['tasks'] as List?) ?? [])
+          .map(
+            (item) => WorkTask.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList(),
+      history:
+          ((json['history'] as List?) ?? [])
+              .map(
+                (item) =>
+                    HistoryEntry.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList(),
+    );
+  }
 }

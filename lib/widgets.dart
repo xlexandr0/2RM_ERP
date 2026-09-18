@@ -1,7 +1,25 @@
 import 'package:flutter/material.dart';
 
 import 'models.dart';
-import 'theme.dart';
+
+Color progressColor(int percentage) {
+  final value =
+      percentage.clamp(0, 100);
+
+  if (value <= 50) {
+    return Color.lerp(
+      Colors.red,
+      Colors.purple,
+      value / 50,
+    )!;
+  }
+
+  return Color.lerp(
+    Colors.purple,
+    Colors.blue,
+    (value - 50) / 50,
+  )!;
+}
 
 String formatDate(DateTime value) {
   return '${value.day.toString().padLeft(2, '0')}/'
@@ -15,35 +33,31 @@ String formatDateTime(DateTime value) {
       '${value.minute.toString().padLeft(2, '0')}';
 }
 
-IconData iconForRole(UserRole role) {
-  switch (role) {
-    case UserRole.admin:
-      return Icons.admin_panel_settings_outlined;
-    case UserRole.gerencia:
-      return Icons.dashboard_outlined;
-    case UserRole.cotizaciones:
-      return Icons.shopping_cart_outlined;
-    case UserRole.dibujante:
-      return Icons.architecture_outlined;
-    case UserRole.chofer:
-      return Icons.local_shipping_outlined;
-    case UserRole.supervisorSoldadura:
-      return Icons.handyman_outlined;
-    case UserRole.supervisorMaestranza:
-      return Icons.precision_manufacturing_outlined;
-  }
-}
-
-Color statusColor(WorkOrder order) {
-  if (order.finished) return Colors.green;
-  if (order.isLate) return Colors.red;
-  return progressColor(order.progress);
+BoxDecoration cardDecoration({
+  bool overdue = false,
+}) {
+  return BoxDecoration(
+    color: overdue
+        ? const Color(0xFFFFEEEE)
+        : Colors.white,
+    borderRadius:
+        BorderRadius.circular(16),
+    border: Border.all(
+      color: overdue
+          ? Colors.red.shade300
+          : const Color(0xFFE4E8EE),
+      width: overdue ? 1.7 : 1,
+    ),
+  );
 }
 
 class BrandLogo extends StatelessWidget {
   final double size;
 
-  const BrandLogo({super.key, required this.size});
+  const BrandLogo({
+    super.key,
+    this.size = 52,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,169 +66,248 @@ class BrandLogo extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: kOrange,
-        borderRadius: BorderRadius.circular(size * .2),
+        color: const Color(0xFFFF8C32),
+        borderRadius:
+            BorderRadius.circular(12),
       ),
       child: Text(
         '2RM',
         style: TextStyle(
           color: Colors.white,
-          fontSize: size * .28,
           fontWeight: FontWeight.w900,
+          fontSize: size * 0.28,
         ),
       ),
     );
   }
 }
 
-class SectionTitle extends StatelessWidget {
+class ProgressCircle extends StatelessWidget {
   final String title;
-  final String subtitle;
-  final Widget? trailing;
 
-  const SectionTitle({
+  final int percentage;
+
+  final double size;
+
+  final bool editable;
+
+  final VoidCallback? onTap;
+
+  const ProgressCircle({
     super.key,
     required this.title,
-    required this.subtitle,
-    this.trailing,
+    required this.percentage,
+    this.size = 115,
+    this.editable = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final color =
+        progressColor(percentage);
+
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        SizedBox(
+          width: size,
+          height: size,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF172B3A),
+              SizedBox(
+                width: size,
+                height: size,
+                child:
+                    CircularProgressIndicator(
+                  value:
+                      percentage / 100,
+                  strokeWidth: 9,
+                  backgroundColor:
+                      Colors.grey.shade200,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(
+                    color,
+                  ),
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(subtitle, style: const TextStyle(color: Colors.grey)),
+              Column(
+                mainAxisSize:
+                    MainAxisSize.min,
+                children: [
+                  Text(
+                    '$percentage%',
+                    style: TextStyle(
+                      fontSize:
+                          size * 0.20,
+                      fontWeight:
+                          FontWeight.w900,
+                      color: color,
+                    ),
+                  ),
+                  if (editable)
+                    Icon(
+                      Icons.edit,
+                      color: color,
+                      size: 16,
+                    ),
+                ],
+              ),
             ],
           ),
         ),
-        if (trailing != null) trailing!,
+        const SizedBox(height: 10),
+        SizedBox(
+          width: size + 50,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight:
+                  FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
       ],
     );
+
+    if (!editable ||
+        onTap == null) {
+      return child;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius:
+          BorderRadius.circular(100),
+      child: Padding(
+        padding:
+            const EdgeInsets.all(5),
+        child: child,
+      ),
+    );
   }
 }
 
-class StatusChip extends StatelessWidget {
-  final String text;
-  final Color color;
+class TaskTile extends StatelessWidget {
+  final WorkTask task;
 
-  const StatusChip({
+  final String assignedName;
+
+  final bool editable;
+
+  final VoidCallback? onTap;
+
+  const TaskTile({
     super.key,
-    required this.text,
-    required this.color,
+    required this.task,
+    required this.assignedName,
+    this.editable = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color =
+        progressColor(task.progress);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(20),
+      margin:
+          const EdgeInsets.only(
+        bottom: 12,
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius:
+            BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              const Color(0xFFE6EAF0),
         ),
       ),
-    );
-  }
-}
-
-class ProgressBar extends StatelessWidget {
-  final int progress;
-  final double height;
-
-  const ProgressBar({
-    super.key,
-    required this.progress,
-    this.height = 10,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = progressColor(progress);
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: progress / 100),
-      duration: const Duration(milliseconds: 500),
-      builder: (context, value, _) {
-        return LinearProgressIndicator(
-          value: value,
-          minHeight: height,
-          backgroundColor: const Color(0xFFE8ECF1),
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-          borderRadius: BorderRadius.circular(20),
-        );
-      },
-    );
-  }
-}
-
-class MetricCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color? accent;
-
-  const MetricCard({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = accent ?? kPrimary;
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: cardDecoration(),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: .10),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w800,
-                  ),
+      child: InkWell(
+        onTap:
+            editable ? onTap : null,
+        borderRadius:
+            BorderRadius.circular(14),
+        child: Padding(
+          padding:
+              const EdgeInsets.all(15),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+                  children: [
+                    Text(
+                      task.title,
+                      style:
+                          const TextStyle(
+                        fontWeight:
+                            FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (task
+                        .description
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 4,
+                      ),
+                      Text(
+                        task.description,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.black54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(
+                      height: 7,
+                    ),
+                    Text(
+                      'Responsable: '
+                      '$assignedName',
+                      style:
+                          const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 3,
+                    ),
+                    Text(
+                      task.status.label,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight:
+                            FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                Text(label, style: const TextStyle(color: Colors.grey)),
-              ],
-            ),
+              ),
+              const SizedBox(width: 16),
+              ProgressCircle(
+                title: editable
+                    ? 'Editar'
+                    : '',
+                percentage:
+                    task.progress,
+                size: 60,
+                editable: editable,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -222,98 +315,218 @@ class MetricCard extends StatelessWidget {
 
 class OrderCard extends StatelessWidget {
   final WorkOrder order;
+
   final VoidCallback onTap;
-  final Widget? trailingAction;
 
   const OrderCard({
     super.key,
     required this.order,
     required this.onTap,
-    this.trailingAction,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = statusColor(order);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            padding: const EdgeInsets.all(21),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE6EAF0)),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final color =
+        progressColor(
+      order.totalProgress,
+    );
+
+    return Container(
+      margin:
+          const EdgeInsets.only(
+        bottom: 14,
+      ),
+      decoration: cardDecoration(
+        overdue: order.isOverdue,
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius:
+            BorderRadius.circular(16),
+        child: Padding(
+          padding:
+              const EdgeInsets.all(19),
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            order.code,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
+                    Wrap(
+                      spacing: 9,
+                      runSpacing: 6,
+                      children: [
+                        Text(
+                          order.code,
+                          style:
+                              const TextStyle(
+                            fontSize: 17,
+                            fontWeight:
+                                FontWeight
+                                    .w900,
+                          ),
+                        ),
+                        if (order
+                            .isOverdue)
+                          Container(
+                            padding:
+                                const EdgeInsets
+                                    .symmetric(
+                              horizontal: 9,
+                              vertical: 4,
+                            ),
+                            decoration:
+                                BoxDecoration(
+                              color: Colors
+                                  .red
+                                  .withOpacity(
+                                      .13),
+                              borderRadius:
+                                  BorderRadius
+                                      .circular(
+                                          20),
+                            ),
+                            child:
+                                const Text(
+                              'ATRASADA',
+                              style:
+                                  TextStyle(
+                                color:
+                                    Colors.red,
+                                fontWeight:
+                                    FontWeight
+                                        .w900,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            order.description,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${order.client} · Entrega ${formatDate(order.dueDate)}',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 6,
+                    ),
+                    Text(
+                      order.description,
+                      style:
+                          const TextStyle(
+                        fontWeight:
+                            FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    if (trailingAction != null) ...[
-                      trailingAction!,
-                      const SizedBox(width: 8),
-                    ],
-                    StatusChip(
-                      text: order.isLate && !order.finished
-                          ? 'Atrasada'
-                          : order.status,
-                      color: color,
+                    Text(
+                      order.client,
+                      style:
+                          const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child:
+                              LinearProgressIndicator(
+                            value: order
+                                    .totalProgress /
+                                100,
+                            minHeight: 9,
+                            backgroundColor:
+                                Colors.grey
+                                    .shade200,
+                            valueColor:
+                                AlwaysStoppedAnimation<
+                                    Color>(
+                              color,
+                            ),
+                            borderRadius:
+                                BorderRadius
+                                    .circular(20),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 12,
+                        ),
+                        Text(
+                          '${order.totalProgress}%',
+                          style: TextStyle(
+                            color: color,
+                            fontWeight:
+                                FontWeight
+                                    .w900,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                Row(
+              ),
+              const SizedBox(width: 25),
+              SizedBox(
+                width: 190,
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.end,
                   children: [
-                    Expanded(child: ProgressBar(progress: order.progress)),
-                    const SizedBox(width: 14),
-                    SizedBox(
-                      width: 46,
-                      child: Text(
-                        '${order.progress}%',
-                        textAlign: TextAlign.right,
+                    const Text(
+                      'Fecha de entrega',
+                      style:
+                          TextStyle(
+                        color: Colors.grey,
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text(
+                      formatDate(
+                        order
+                            .originalDueDate,
+                      ),
+                      style:
+                          const TextStyle(
+                        fontWeight:
+                            FontWeight.w800,
+                      ),
+                    ),
+                    if (order
+                            .revisedDueDate !=
+                        null) ...[
+                      const SizedBox(
+                        height: 7,
+                      ),
+                      const Text(
+                        'Nueva fecha de entrega',
+                        textAlign:
+                            TextAlign.right,
                         style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: progressColor(order.progress),
+                          color: Colors.red,
+                          fontWeight:
+                              FontWeight.w700,
+                          fontSize: 11,
                         ),
                       ),
-                    ),
+                      Text(
+                        formatDate(
+                          order
+                              .revisedDueDate!,
+                        ),
+                        style:
+                            const TextStyle(
+                          color: Colors.red,
+                          fontWeight:
+                              FontWeight.w900,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -321,40 +534,145 @@ class OrderCard extends StatelessWidget {
   }
 }
 
-class EmptyState extends StatelessWidget {
-  final IconData icon;
+Future<int?> showStepProgressDialog(
+  BuildContext context, {
+  required String title,
+  required int currentValue,
+}) {
+  int selected = currentValue;
+
+  return showDialog<int>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (
+          context,
+          setState,
+        ) {
+          return AlertDialog(
+            title: Text(title),
+            content: Column(
+              mainAxisSize:
+                  MainAxisSize.min,
+              children: [
+                0,
+                25,
+                50,
+                75,
+                100,
+              ].map((value) {
+                return RadioListTile<int>(
+                  value: value,
+                  groupValue: selected,
+                  title:
+                      Text('$value%'),
+                  secondary: Icon(
+                    Icons.circle,
+                    color:
+                        progressColor(
+                      value,
+                    ),
+                  ),
+                  onChanged:
+                      (newValue) {
+                    if (newValue ==
+                        null) {
+                      return;
+                    }
+
+                    setState(() {
+                      selected =
+                          newValue;
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(
+                  dialogContext,
+                ),
+                child:
+                    const Text(
+                  'Cancelar',
+                ),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.pop(
+                  dialogContext,
+                  selected,
+                ),
+                child:
+                    const Text(
+                  'Guardar',
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+class PageHeader extends StatelessWidget {
   final String title;
+
   final String subtitle;
 
-  const EmptyState({
+  final Widget? action;
+
+  const PageHeader({
     super.key,
-    required this.icon,
     required this.title,
     required this.subtitle,
+    this.action,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 70),
-      decoration: cardDecoration(),
-      child: Column(
-        children: [
-          Icon(icon, size: 58, color: Colors.grey.shade400),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+    return Wrap(
+      spacing: 18,
+      runSpacing: 14,
+      alignment:
+          WrapAlignment.spaceBetween,
+      crossAxisAlignment:
+          WrapCrossAlignment.center,
+      children: [
+        SizedBox(
+          width: 600,
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style:
+                    const TextStyle(
+                  fontSize: 30,
+                  fontWeight:
+                      FontWeight.w900,
+                ),
+              ),
+              const SizedBox(
+                height: 4,
+              ),
+              Text(
+                subtitle,
+                style:
+                    const TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
+        ),
+        if (action != null)
+          action!,
+      ],
     );
   }
 }

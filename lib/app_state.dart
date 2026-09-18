@@ -10,553 +10,773 @@ class AppState extends ChangeNotifier {
 
   static final AppState instance = AppState._();
 
-  static const _usersKey = 'erp_2rm_users_v2';
-  static const _ordersKey = 'erp_2rm_orders_v2';
+  static const String _storageKey =
+      'erp_2rm_v4_data';
 
-  final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
-
-  final List<AppUser> users = <AppUser>[];
-  final List<WorkOrder> orders = <WorkOrder>[];
+  SharedPreferences? _preferences;
 
   AppUser? currentUser;
-  bool initialized = false;
 
-  Future<void> initialize() async {
-    await _load();
-    initialized = true;
-    notifyListeners();
-  }
+  List<AppUser> users = [];
 
-  Future<void> _load() async {
-    final usersJson = await _prefs.getString(_usersKey);
-    final ordersJson = await _prefs.getString(_ordersKey);
+  List<WorkOrder> orders = [];
 
-    if (usersJson == null || usersJson.isEmpty) {
-      users
-        ..clear()
-        ..addAll(_seedUsers());
-      await _saveUsers();
-    } else {
-      try {
-        final decoded = jsonDecode(usersJson) as List<dynamic>;
-        users
-          ..clear()
-          ..addAll(
-            decoded.map(
-              (item) => AppUser.fromJson(item as Map<String, dynamic>),
-            ),
-          );
-      } catch (_) {
-        users
-          ..clear()
-          ..addAll(_seedUsers());
-        await _saveUsers();
-      }
+  final List<int> allowedProgress = const [
+    0,
+    25,
+    50,
+    75,
+    100,
+  ];
+
+  int _nextUserId = 11;
+
+  int _nextOrderId = 3;
+
+  int _nextOrderNumber = 160;
+
+  int _nextTaskId = 11;
+
+  Future<void> init() async {
+    _preferences =
+        await SharedPreferences.getInstance();
+
+    final saved =
+        _preferences!.getString(_storageKey);
+
+    if (saved == null) {
+      _createDemoData();
+
+      await save();
+
+      return;
     }
 
-    if (ordersJson == null || ordersJson.isEmpty) {
-      orders
-        ..clear()
-        ..addAll(_seedOrders());
-      await _saveOrders();
-    } else {
-      try {
-        final decoded = jsonDecode(ordersJson) as List<dynamic>;
-        orders
-          ..clear()
-          ..addAll(
-            decoded.map(
-              (item) => WorkOrder.fromJson(item as Map<String, dynamic>),
-            ),
-          );
-      } catch (_) {
-        orders
-          ..clear()
-          ..addAll(_seedOrders());
-        await _saveOrders();
+    try {
+      final data =
+          jsonDecode(saved) as Map<String, dynamic>;
+
+      users =
+          ((data['users'] as List?) ?? [])
+              .map(
+                (item) => AppUser.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList();
+
+      orders =
+          ((data['orders'] as List?) ?? [])
+              .map(
+                (item) => WorkOrder.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList();
+
+      _nextUserId =
+          data['nextUserId'] ?? 11;
+
+      _nextOrderId =
+          data['nextOrderId'] ?? 3;
+
+      _nextOrderNumber =
+          data['nextOrderNumber'] ?? 160;
+
+      _nextTaskId =
+          data['nextTaskId'] ?? 11;
+
+      if (users.isEmpty) {
+        _createDemoData();
+
+        await save();
       }
+    } catch (e) {
+      _createDemoData();
+
+      await save();
     }
   }
 
-  List<AppUser> _seedUsers() => <AppUser>[
-        AppUser(
-          id: 'user-admin',
-          username: 'admin',
-          password: '1234',
-          fullName: 'Administrador 2RM',
-          role: UserRole.admin,
-        ),
-        AppUser(
-          id: 'user-gerencia',
-          username: 'gerencia',
-          password: '1234',
-          fullName: 'Gerencia 2RM',
-          role: UserRole.gerencia,
-        ),
-        AppUser(
-          id: 'user-cotizaciones',
-          username: 'cotizaciones',
-          password: '1234',
-          fullName: 'María López',
-          role: UserRole.cotizaciones,
-        ),
-        AppUser(
-          id: 'user-dibujante',
-          username: 'dibujante',
-          password: '1234',
-          fullName: 'Pedro Díaz',
-          role: UserRole.dibujante,
-        ),
-        AppUser(
-          id: 'user-chofer',
-          username: 'chofer',
-          password: '1234',
-          fullName: 'Luis Torres',
-          role: UserRole.chofer,
-        ),
-        AppUser(
-          id: 'user-soldadura',
-          username: 'soldadura',
-          password: '1234',
-          fullName: 'Carlos Ramírez',
-          role: UserRole.supervisorSoldadura,
-        ),
-        AppUser(
-          id: 'user-maestranza',
-          username: 'maestranza',
-          password: '1234',
-          fullName: 'José Mendoza',
-          role: UserRole.supervisorMaestranza,
-        ),
-      ];
+  void _createDemoData() {
+    users = [
+      AppUser(
+        id: 1,
+        name: 'Administrador 2RM',
+        username: 'admin',
+        password: '1234',
+        role: UserRole.admin,
+      ),
+      AppUser(
+        id: 2,
+        name: 'Almacén',
+        username: 'almacen',
+        password: '1234',
+        role: UserRole.almacen,
+      ),
+      AppUser(
+        id: 3,
+        name: 'Logística',
+        username: 'logistica',
+        password: '1234',
+        role: UserRole.logistica,
+      ),
+      AppUser(
+        id: 4,
+        name: 'Contabilidad',
+        username: 'contabilidad',
+        password: '1234',
+        role: UserRole.contabilidad,
+      ),
+      AppUser(
+        id: 5,
+        name: 'Jefatura 1',
+        username: 'jefatura1',
+        password: '1234',
+        role: UserRole.jefatura,
+      ),
+      AppUser(
+        id: 6,
+        name: 'Jefatura 2',
+        username: 'jefatura2',
+        password: '1234',
+        role: UserRole.jefatura,
+      ),
+      AppUser(
+        id: 7,
+        name: 'Supervisor 1',
+        username: 'supervisor1',
+        password: '1234',
+        role: UserRole.supervisor,
+      ),
+      AppUser(
+        id: 8,
+        name: 'Supervisor 2',
+        username: 'supervisor2',
+        password: '1234',
+        role: UserRole.supervisor,
+      ),
+      AppUser(
+        id: 9,
+        name: 'Cotizaciones 1',
+        username: 'cotizaciones1',
+        password: '1234',
+        role: UserRole.cotizaciones,
+      ),
+      AppUser(
+        id: 10,
+        name: 'Cotizaciones 2',
+        username: 'cotizaciones2',
+        password: '1234',
+        role: UserRole.cotizaciones,
+      ),
+    ];
 
-  List<WorkOrder> _seedOrders() => <WorkOrder>[
-        WorkOrder(
-          id: 'ot-148',
-          code: 'OT-000148',
-          client: 'Alicorp S.A.A.',
-          description: 'Fabricación de estructura metálica',
-          startDate: DateTime(2026, 9, 2),
-          dueDate: DateTime(2026, 9, 25),
-          approved: true,
-          orderPlaced: true,
-          dxfUploaded: true,
-          received: true,
-          weldingProgress: 80,
-          machiningProgress: 55,
-          orderPdfName: 'OT-000148.pdf',
-          dxfFileName: 'estructura_v3.dxf',
-          history: <ActivityLog>[
-            ActivityLog(
-              title: 'Pedido recibido',
-              detail: 'El chofer confirmó la recepción del pedido.',
-              actor: 'Luis Torres',
-              timestamp: DateTime(2026, 9, 5, 9, 10),
-            ),
-            ActivityLog(
-              title: 'DXF cargado',
-              detail: 'Se adjuntó estructura_v3.dxf.',
-              actor: 'Pedro Díaz',
-              timestamp: DateTime(2026, 9, 4, 14, 42),
-            ),
-            ActivityLog(
-              title: 'Pedido realizado',
-              detail: 'Cotizaciones confirmó el pedido.',
-              actor: 'María López',
-              timestamp: DateTime(2026, 9, 3, 10, 15),
-            ),
-            ActivityLog(
-              title: 'OT aprobada',
-              detail: 'Orden registrada y aprobada.',
-              actor: 'Administrador 2RM',
-              timestamp: DateTime(2026, 9, 2, 8, 34),
-            ),
-          ],
-        ),
-        WorkOrder(
-          id: 'ot-149',
-          code: 'OT-000149',
-          client: 'Industrias del Perú',
-          description: 'Fabricación de base para motor industrial',
-          startDate: DateTime(2026, 9, 5),
-          dueDate: DateTime(2026, 9, 28),
-          approved: true,
-          orderPlaced: true,
-          dxfUploaded: true,
-          received: true,
-          weldingProgress: 45,
-          machiningProgress: 35,
-        ),
-        WorkOrder(
-          id: 'ot-150',
-          code: 'OT-000150',
-          client: 'Corporación Andina',
-          description: 'Fabricación de tanque inoxidable',
-          startDate: DateTime(2026, 9, 8),
-          dueDate: DateTime(2026, 10, 2),
-          approved: true,
-          orderPlaced: true,
-          dxfUploaded: true,
-          received: false,
-        ),
-        WorkOrder(
-          id: 'ot-151',
-          code: 'OT-000151',
-          client: 'Minera del Sur',
-          description: 'Plataforma para mantenimiento industrial',
-          startDate: DateTime(2026, 9, 10),
-          dueDate: DateTime(2026, 10, 10),
-          approved: true,
-          orderPlaced: false,
-        ),
-        WorkOrder(
-          id: 'ot-147',
-          code: 'OT-000147',
-          client: 'Servicios Industriales SAC',
-          description: 'Fabricación de soporte estructural',
-          startDate: DateTime(2026, 8, 18),
-          dueDate: DateTime(2026, 8, 30),
-          approved: true,
-          orderPlaced: true,
-          dxfUploaded: true,
-          received: true,
-          weldingProgress: 100,
-          machiningProgress: 100,
-          finished: true,
-        ),
-      ];
+    final now = DateTime.now();
 
-  Future<void> _saveUsers() async {
-    await _prefs.setString(
-      _usersKey,
-      jsonEncode(users.map((item) => item.toJson()).toList()),
+    orders = [
+      WorkOrder(
+        id: 1,
+        code: 'OT-000158',
+        client: 'Aceros del Perú',
+        description:
+            'Fabricación de estructura metálica',
+        originalDueDate:
+            now.add(const Duration(days: 5)),
+        productionProgress: 75,
+        materialProgress: 50,
+        tasks: [
+          WorkTask(
+            id: 1,
+            title: 'Cotizar material',
+            description:
+                'Realizar la cotización inicial.',
+            assignedUsername: 'cotizaciones1',
+            progress: 100,
+            status: TaskStatus.completed,
+          ),
+          WorkTask(
+            id: 2,
+            title: 'Generar pedido',
+            description:
+                'Generar pedido de materiales.',
+            assignedUsername: 'cotizaciones2',
+            progress: 100,
+            status: TaskStatus.completed,
+          ),
+          WorkTask(
+            id: 3,
+            title: 'Coordinar transporte',
+            description:
+                'Coordinar recojo y traslado.',
+            assignedUsername: 'logistica',
+            progress: 75,
+            status: TaskStatus.inProgress,
+          ),
+          WorkTask(
+            id: 4,
+            title: 'Ingreso de material',
+            description:
+                'Registrar material recibido.',
+            assignedUsername: 'almacen',
+            progress: 50,
+            status: TaskStatus.inProgress,
+          ),
+          WorkTask(
+            id: 5,
+            title: 'Fabricación',
+            description:
+                'Trabajo de producción.',
+            assignedUsername: 'supervisor1',
+            progress: 75,
+            status: TaskStatus.inProgress,
+          ),
+          WorkTask(
+            id: 6,
+            title: 'Control dimensional',
+            description:
+                'Verificar medidas.',
+            assignedUsername: 'supervisor2',
+            progress: 25,
+            status: TaskStatus.inProgress,
+          ),
+          WorkTask(
+            id: 7,
+            title: 'Validación contable',
+            description:
+                'Validar documentación.',
+            assignedUsername: 'contabilidad',
+            progress: 25,
+            status: TaskStatus.inProgress,
+          ),
+        ],
+      ),
+
+      // Esta OT se crea vencida para probar
+      // automáticamente el fondo rojo.
+      WorkOrder(
+        id: 2,
+        code: 'OT-000159',
+        client: 'Industrias del Perú',
+        description:
+            'Fabricación de soporte industrial',
+        originalDueDate:
+            now.subtract(const Duration(days: 1)),
+        productionProgress: 25,
+        materialProgress: 25,
+        tasks: [
+          WorkTask(
+            id: 8,
+            title: 'Cotización',
+            description: 'Cotización inicial.',
+            assignedUsername: 'cotizaciones1',
+            progress: 100,
+            status: TaskStatus.completed,
+          ),
+          WorkTask(
+            id: 9,
+            title: 'Recepción material',
+            description:
+                'Ingreso de material.',
+            assignedUsername: 'almacen',
+            progress: 25,
+            status: TaskStatus.inProgress,
+          ),
+          WorkTask(
+            id: 10,
+            title: 'Maestranza',
+            description:
+                'Trabajo asignado.',
+            assignedUsername: 'supervisor2',
+            progress: 25,
+            status: TaskStatus.inProgress,
+          ),
+        ],
+      ),
+    ];
+
+    _nextUserId = 11;
+    _nextOrderId = 3;
+    _nextOrderNumber = 160;
+    _nextTaskId = 11;
+  }
+
+  Future<void> save() async {
+    final data = {
+      'users':
+          users.map((user) => user.toJson()).toList(),
+      'orders':
+          orders.map((order) => order.toJson()).toList(),
+      'nextUserId': _nextUserId,
+      'nextOrderId': _nextOrderId,
+      'nextOrderNumber': _nextOrderNumber,
+      'nextTaskId': _nextTaskId,
+    };
+
+    await _preferences?.setString(
+      _storageKey,
+      jsonEncode(data),
     );
   }
 
-  Future<void> _saveOrders() async {
-    await _prefs.setString(
-      _ordersKey,
-      jsonEncode(orders.map((item) => item.toJson()).toList()),
-    );
-  }
-
-  String? login(String username, String password) {
-    final normalized = username.trim().toLowerCase();
-    AppUser? match;
+  AppUser? login(
+    String username,
+    String password,
+  ) {
+    final normalized =
+        username.trim().toLowerCase();
 
     for (final user in users) {
-      if (user.username.trim().toLowerCase() == normalized &&
-          user.password == password) {
-        match = user;
-        break;
+      if (user.username.toLowerCase() ==
+              normalized &&
+          user.password == password &&
+          user.active) {
+        currentUser = user;
+
+        notifyListeners();
+
+        return user;
       }
     }
 
-    if (match == null) return 'Usuario o contraseña incorrectos.';
-    if (!match.active) return 'Este usuario está desactivado.';
-
-    currentUser = match;
-    notifyListeners();
     return null;
   }
 
   void logout() {
     currentUser = null;
+
     notifyListeners();
   }
 
-  WorkOrder findOrder(String id) => orders.firstWhere((item) => item.id == id);
-
-  int get activeOrders => orders.where((item) => !item.finished).length;
-  int get productionOrders =>
-      orders.where((item) => item.status == 'En producción').length;
-  int get lateOrders => orders.where((item) => item.isLate).length;
-  int get finishedOrders => orders.where((item) => item.finished).length;
-  int get activeUsers => users.where((item) => item.active).length;
-
-  int get averageProgress {
-    if (orders.isEmpty) return 0;
-    final sum = orders.fold<int>(0, (value, item) => value + item.progress);
-    return (sum / orders.length).round();
+  WorkOrder orderById(int id) {
+    return orders.firstWhere(
+      (order) => order.id == id,
+    );
   }
 
-  String nextOrderCode() {
-    var maxNumber = 0;
-    for (final order in orders) {
-      final parts = order.code.split('-');
-      if (parts.length < 2) continue;
-      final value = int.tryParse(parts.last) ?? 0;
-      if (value > maxNumber) maxNumber = value;
+  AppUser? userByUsername(String username) {
+    for (final user in users) {
+      if (user.username == username) {
+        return user;
+      }
     }
-    return 'OT-${(maxNumber + 1).toString().padLeft(6, '0')}';
+
+    return null;
   }
 
-  String _newId(String prefix) =>
-      '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+  int get activeOrders =>
+      orders.where((order) => !order.closed).length;
 
-  String _actorName() => currentUser?.fullName ?? 'Sistema';
+  int get overdueOrders =>
+      orders.where((order) => order.isOverdue).length;
 
-  Future<void> addOrder({
+  int get closedOrders =>
+      orders.where((order) => order.closed).length;
+
+  int get activeUsers =>
+      users.where((user) => user.active).length;
+
+  Future<void> createOrder({
     required String client,
     required String description,
     required DateTime dueDate,
-    String? orderPdfName,
-    String? orderPdfPath,
+    String? pdfName,
+    String? pdfPath,
   }) async {
+    final user = currentUser;
+
+    if (user == null ||
+        !user.canCreateOrder) {
+      return;
+    }
+
+    final code =
+        'OT-${_nextOrderNumber.toString().padLeft(6, '0')}';
+
     final order = WorkOrder(
-      id: _newId('ot'),
-      code: nextOrderCode(),
-      client: client.trim(),
-      description: description.trim(),
-      startDate: DateTime.now(),
-      dueDate: dueDate,
-      approved: true,
-      orderPdfName: orderPdfName,
-      orderPdfPath: orderPdfPath,
-      history: <ActivityLog>[
-        ActivityLog(
-          title: 'OT aprobada',
-          detail: orderPdfName == null
-              ? 'La orden fue registrada y aprobada.'
-              : 'La orden fue registrada con el archivo $orderPdfName.',
-          actor: _actorName(),
-          timestamp: DateTime.now(),
+      id: _nextOrderId++,
+      code: code,
+      client: client,
+      description: description,
+      originalDueDate: dueDate,
+      pdfName: pdfName,
+      pdfPath: pdfPath,
+      history: [
+        HistoryEntry(
+          title: 'OT creada',
+          detail:
+              'La orden de trabajo fue creada.',
+          date: DateTime.now(),
+          byUser: user.username,
         ),
       ],
     );
 
+    _nextOrderNumber++;
+
     orders.insert(0, order);
-    await _saveOrders();
+
+    await save();
+
     notifyListeners();
   }
 
-  Future<void> updateOrder({
-    required String id,
-    required String client,
+  Future<void> addTask({
+    required int orderId,
+    required String title,
     required String description,
-    required DateTime dueDate,
-    String? orderPdfName,
-    String? orderPdfPath,
+    required String assignedUsername,
   }) async {
-    final order = findOrder(id);
-    order.client = client.trim();
-    order.description = description.trim();
-    order.dueDate = dueDate;
-    if (orderPdfName != null) {
-      order.orderPdfName = orderPdfName;
-      order.orderPdfPath = orderPdfPath;
+    final user = currentUser;
+
+    if (user == null ||
+        !user.canManageTasks) {
+      return;
     }
-    order.history.insert(
-      0,
-      ActivityLog(
-        title: 'OT actualizada',
-        detail: 'Se actualizaron los datos generales de la orden.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
+
+    final order = orderById(orderId);
+
+    order.tasks.add(
+      WorkTask(
+        id: _nextTaskId++,
+        title: title,
+        description: description,
+        assignedUsername: assignedUsername,
       ),
     );
-    await _saveOrders();
+
+    order.history.insert(
+      0,
+      HistoryEntry(
+        title: 'Tarea creada',
+        detail:
+            '$title asignada a $assignedUsername.',
+        date: DateTime.now(),
+        byUser: user.username,
+      ),
+    );
+
+    await save();
+
     notifyListeners();
   }
 
-  Future<void> deleteOrder(String id) async {
-    orders.removeWhere((item) => item.id == id);
-    await _saveOrders();
+  Future<void> updateTaskProgress({
+    required int orderId,
+    required int taskId,
+    required int value,
+  }) async {
+    if (!allowedProgress.contains(value)) {
+      return;
+    }
+
+    final user = currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    final order = orderById(orderId);
+
+    final task = order.tasks.firstWhere(
+      (task) => task.id == taskId,
+    );
+
+    final canEdit =
+        task.assignedUsername == user.username ||
+        user.role == UserRole.admin;
+
+    if (!canEdit) {
+      return;
+    }
+
+    final previous = task.progress;
+
+    task.progress = value;
+
+    if (value == 0) {
+      task.status = TaskStatus.pending;
+    } else if (value == 100) {
+      task.status = TaskStatus.completed;
+    } else {
+      task.status = TaskStatus.inProgress;
+    }
+
+    order.history.insert(
+      0,
+      HistoryEntry(
+        title: 'Avance de tarea',
+        detail:
+            '${task.title}: $previous% → $value%.',
+        date: DateTime.now(),
+        byUser: user.username,
+      ),
+    );
+
+    await save();
+
     notifyListeners();
   }
 
-  Future<void> markOrderPlaced(String id) async {
-    final order = findOrder(id);
-    if (order.orderPlaced) return;
-    order.orderPlaced = true;
+  Future<void> updateProductionProgress({
+    required int orderId,
+    required int value,
+  }) async {
+    if (!allowedProgress.contains(value)) {
+      return;
+    }
+
+    final user = currentUser;
+
+    if (user == null ||
+        !user.canChangeProduction) {
+      return;
+    }
+
+    final order = orderById(orderId);
+
+    final previous =
+        order.productionProgress;
+
+    order.productionProgress = value;
+
     order.history.insert(
       0,
-      ActivityLog(
-        title: 'Pedido realizado',
-        detail: 'Cotizaciones confirmó la realización del pedido.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
+      HistoryEntry(
+        title: 'Avance de producción',
+        detail:
+            'Maestranza/Soldadura: '
+            '$previous% → $value%.',
+        date: DateTime.now(),
+        byUser: user.username,
       ),
     );
-    await _saveOrders();
+
+    await save();
+
+    notifyListeners();
+  }
+
+  Future<void> updateMaterialProgress({
+    required int orderId,
+    required int value,
+  }) async {
+    if (!allowedProgress.contains(value)) {
+      return;
+    }
+
+    final user = currentUser;
+
+    if (user == null ||
+        !user.canChangeMaterial) {
+      return;
+    }
+
+    final order = orderById(orderId);
+
+    final previous =
+        order.materialProgress;
+
+    order.materialProgress = value;
+
+    order.history.insert(
+      0,
+      HistoryEntry(
+        title: 'Material recibido',
+        detail:
+            '$previous% → $value%.',
+        date: DateTime.now(),
+        byUser: user.username,
+      ),
+    );
+
+    await save();
+
+    notifyListeners();
+  }
+
+  Future<void> changeDeliveryDate({
+    required int orderId,
+    required DateTime newDate,
+  }) async {
+    final user = currentUser;
+
+    // SOLO Jefatura 1 y Jefatura 2.
+    if (user == null ||
+        !user.canChangeDeliveryDate) {
+      return;
+    }
+
+    final order = orderById(orderId);
+
+    final previous =
+        order.activeDueDate;
+
+    order.revisedDueDate = newDate;
+
+    order.history.insert(
+      0,
+      HistoryEntry(
+        title: 'Nueva fecha de entrega',
+        detail:
+            '${_formatDate(previous)} → '
+            '${_formatDate(newDate)}.',
+        date: DateTime.now(),
+        byUser: user.username,
+      ),
+    );
+
+    await save();
+
     notifyListeners();
   }
 
   Future<void> attachDxf({
-    required String id,
+    required int orderId,
     required String fileName,
-    String? filePath,
+    required String? filePath,
   }) async {
-    final order = findOrder(id);
-    order.dxfUploaded = true;
-    order.dxfFileName = fileName;
-    order.dxfFilePath = filePath;
-    order.history.insert(
-      0,
-      ActivityLog(
-        title: 'DXF cargado',
-        detail: 'Se adjuntó el archivo $fileName.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
-      ),
-    );
-    await _saveOrders();
-    notifyListeners();
-  }
+    final user = currentUser;
 
-  Future<void> markReceived(String id) async {
-    final order = findOrder(id);
-    if (order.received) return;
-    order.received = true;
-    order.history.insert(
-      0,
-      ActivityLog(
-        title: 'Pedido recibido',
-        detail: 'El pedido fue confirmado como recibido.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
-      ),
-    );
-    await _saveOrders();
-    notifyListeners();
-  }
-
-  Future<void> setWeldingProgress(String id, int value) async {
-    final order = findOrder(id);
-    order.weldingProgress = value.clamp(0, 100).toInt();
-    order.history.insert(
-      0,
-      ActivityLog(
-        title: 'Avance de Soldadura',
-        detail: 'Soldadura actualizó su avance a ${order.weldingProgress}%.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
-      ),
-    );
-    await _saveOrders();
-    notifyListeners();
-  }
-
-  Future<void> setMachiningProgress(String id, int value) async {
-    final order = findOrder(id);
-    order.machiningProgress = value.clamp(0, 100).toInt();
-    order.history.insert(
-      0,
-      ActivityLog(
-        title: 'Avance de Maestranza',
-        detail:
-            'Maestranza actualizó su avance a ${order.machiningProgress}%.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
-      ),
-    );
-    await _saveOrders();
-    notifyListeners();
-  }
-
-  Future<void> finishOrder(String id) async {
-    final order = findOrder(id);
-    if (order.weldingProgress < 100 || order.machiningProgress < 100) {
+    if (user == null) {
       return;
     }
-    order.finished = true;
+
+    final order = orderById(orderId);
+
+    order.dxfName = fileName;
+    order.dxfPath = filePath;
+
     order.history.insert(
       0,
-      ActivityLog(
-        title: 'OT finalizada',
-        detail: 'La orden de trabajo fue cerrada al 100%.',
-        actor: _actorName(),
-        timestamp: DateTime.now(),
+      HistoryEntry(
+        title: 'DXF cargado',
+        detail: fileName,
+        date: DateTime.now(),
+        byUser: user.username,
       ),
     );
-    await _saveOrders();
+
+    await save();
+
     notifyListeners();
   }
 
-  Future<String?> createUser({
+  Future<void> closeOrder(
+    int orderId,
+  ) async {
+    final user = currentUser;
+
+    if (user == null ||
+        !user.canCloseOrder) {
+      return;
+    }
+
+    final order = orderById(orderId);
+
+    if (!order.canClose) {
+      return;
+    }
+
+    order.closed = true;
+
+    order.history.insert(
+      0,
+      HistoryEntry(
+        title: 'OT finalizada',
+        detail:
+            'La OT fue cerrada al 100%.',
+        date: DateTime.now(),
+        byUser: user.username,
+      ),
+    );
+
+    await save();
+
+    notifyListeners();
+  }
+
+  Future<void> createUser({
+    required String name,
     required String username,
     required String password,
-    required String fullName,
     required UserRole role,
-    required bool active,
   }) async {
-    final normalized = username.trim().toLowerCase();
-    final duplicate = users.any(
-      (item) => item.username.trim().toLowerCase() == normalized,
+    final current = currentUser;
+
+    if (current == null ||
+        !current.canManageUsers) {
+      return;
+    }
+
+    final normalized =
+        username.trim().toLowerCase();
+
+    final exists = users.any(
+      (user) =>
+          user.username.toLowerCase() ==
+          normalized,
     );
-    if (duplicate) return 'Ese nombre de usuario ya existe.';
+
+    if (exists) {
+      throw Exception(
+        'Ese usuario ya existe.',
+      );
+    }
 
     users.add(
       AppUser(
-        id: _newId('user'),
-        username: username.trim(),
+        id: _nextUserId++,
+        name: name.trim(),
+        username: normalized,
         password: password,
-        fullName: fullName.trim(),
         role: role,
-        active: active,
       ),
     );
-    await _saveUsers();
+
+    await save();
+
     notifyListeners();
-    return null;
   }
 
-  Future<String?> updateUser({
-    required String id,
-    required String username,
-    required String fullName,
-    required UserRole role,
-    required bool active,
-    String? newPassword,
-  }) async {
-    final normalized = username.trim().toLowerCase();
-    final duplicate = users.any(
-      (item) =>
-          item.id != id && item.username.trim().toLowerCase() == normalized,
+  Future<void> toggleUser(
+    int userId,
+  ) async {
+    final current = currentUser;
+
+    if (current == null ||
+        !current.canManageUsers) {
+      return;
+    }
+
+    final user = users.firstWhere(
+      (user) => user.id == userId,
     );
-    if (duplicate) return 'Ese nombre de usuario ya existe.';
 
-    final user = users.firstWhere((item) => item.id == id);
-    if (user.id == currentUser?.id && !active) {
-      return 'No puedes desactivar tu propia sesión.';
+    if (user.username == 'admin') {
+      return;
     }
 
-    user.username = username.trim();
-    user.fullName = fullName.trim();
-    user.role = role;
-    user.active = active;
-    if (newPassword != null && newPassword.isNotEmpty) {
-      user.password = newPassword;
-    }
+    user.active = !user.active;
 
-    await _saveUsers();
+    await save();
+
     notifyListeners();
-    return null;
   }
 
-  Future<String?> deleteUser(String id) async {
-    if (currentUser?.id == id) return 'No puedes eliminar tu propio usuario.';
-    final user = users.firstWhere((item) => item.id == id);
-    if (user.role == UserRole.admin &&
-        users.where((item) => item.role == UserRole.admin).length <= 1) {
-      return 'Debe existir al menos un administrador.';
-    }
-    users.removeWhere((item) => item.id == id);
-    await _saveUsers();
+  Future<void> resetDemo() async {
+    currentUser = null;
+
+    _createDemoData();
+
+    await save();
+
     notifyListeners();
-    return null;
   }
 
-  Future<void> resetDemoData() async {
-    users
-      ..clear()
-      ..addAll(_seedUsers());
-    orders
-      ..clear()
-      ..addAll(_seedOrders());
-    currentUser = users.first;
-    await _saveUsers();
-    await _saveOrders();
-    notifyListeners();
+  String _formatDate(DateTime value) {
+    return '${value.day.toString().padLeft(2, '0')}/'
+        '${value.month.toString().padLeft(2, '0')}/'
+        '${value.year}';
   }
 }
